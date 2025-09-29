@@ -22,7 +22,7 @@ def wx_push(title, content):
         logger.warning("未设置 PUSHPLUS_TOKEN，跳过推送")
         return
     url = "https://www.pushplus.plus/send"
-    data = {"token": token, "title": title, "content": content, "template": "html"}
+    data = {"token": token, "title": title, "content": content, "template": "txt"}
     try:
         rsp = requests.post(url, json=data, timeout=5)
         logger.info("PushPlus 推送结果：%s", rsp.text)
