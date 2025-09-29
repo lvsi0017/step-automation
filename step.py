@@ -8,14 +8,34 @@ import logging
 import requests
 from datetime import datetime
 
+# ---------------- 日志 -----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# 从环境变量读取账号
+# ---------------- 账号 -----------------
 ACCOUNTS = json.loads(os.getenv("ACCOUNTS", "[]"))
-STEP_RANGES = {5: {"min": 60000, "max": 70000}, 6: {"min": 60000, "max": 70000}}
+
+# ---------------- 步数规则 -----------------
+STEP_RANGES = {5: {"min": 60000, "max": 70000},
+               6: {"min": 60000, "max": 70000}}
 DEFAULT_STEPS = 65535
 
+# ---------------- 推送 -----------------
+def wx_push(title, content):
+    key = os.getenv("SERVERCHAN_KEY")
+    if not key:
+        return
+    url = f"https://sctapi.ftqq.com/{key}.send"
+    try:
+        rsp = requests.post(url, data={"title": title, "desp": content}, timeout=5)
+        logger.info("Server 酱推送结果：%s", rsp.text)
+    except Exception as e:
+        logger.error("Server 酱推送异常：%s", e)
+
+# ---------------- 结果收集 -----------------
+results = []
+
+# ---------------- 步数提交类 -----------------
 class StepSubmitter:
     def __init__(self):
         self.s = requests.Session()
@@ -50,24 +70,35 @@ class StepSubmitter:
             return False, str(e)
 
     def run(self):
-        ok, fail = 0, 0
+        ok = fail = 0
         for idx, acc in enumerate(ACCOUNTS, 1):
             logger.info(f'[{idx}/{len(ACCOUNTS)}] 账号 {acc["username"]}')
             steps = self.get_steps()
-            succ, msg = self.submit(acc['username'], acc['password'], steps)
-            if succ:
+            success, msg = self.submit(acc['username'], acc['password'], steps)
+            results.append({'user': acc['username'], 'steps': steps, 'ok': success})
+            if success:
                 ok += 1
-                logger.info(f'✓ {msg}')
+                logger.info('✓ %s', msg)
             else:
                 fail += 1
-                logger.error(f'✗ {msg}')
+                logger.error('✗ %s', msg)
             if idx < len(ACCOUNTS):
                 time.sleep(5)
-        logger.info(f'全部完成 → 成功 {ok} / 失败 {fail}')
-        exit(0 if fail == 0 else 1)
 
+        # 推送明细
+        lines = [f"步数提交日报", f"成功 {ok} 账号，失败 {fail} 账号。"]
+        for r in results:
+            lines.append(f"{r['user']}: {r['steps']} 步")
+        wx_push("步数提交日报", "\n".join(lines))
+
+        logger.info('全部完成 → 成功 %d / 失败 %d', ok, fail)
+        return ok, fail
+
+# ---------------- 入口 -----------------
 if __name__ == '__main__':
     if not ACCOUNTS:
-        logger.error('未检测到 ACCOUNTS 环境变量，请检查 GitHub Secrets 配置')
+        logger.error('未设置 ACCOUNTS 环境变量')
         exit(1)
-    StepSubmitter().run()
+    submitter = StepSubmitter()
+    ok, fail = submitter.run()
+    exit(0 if fail == 0 else 1)
