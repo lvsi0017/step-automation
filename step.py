@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Server 酱推送调试版（带 9 步排查日志）
+"""
 import os
 import json
 import random
@@ -8,34 +11,31 @@ import logging
 import requests
 from datetime import datetime
 
-# ---------------- 日志 -----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# ---------------- 账号 -----------------
-ACCOUNTS = json.loads(os.getenv("ACCOUNTS", "[]"))
-
-# ---------------- 步数规则 -----------------
-STEP_RANGES = {5: {"min": 60000, "max": 70000},
-               6: {"min": 60000, "max": 70000}}
+ACCOUNTS   = json.loads(os.getenv("ACCOUNTS", "[]"))
+STEP_RANGES = {5: {"min": 60000, "max": 70000}, 6: {"min": 60000, "max": 70000}}
 DEFAULT_STEPS = 65535
+results = []                         # 收集账号结果
 
-# ---------------- 推送 -----------------
+# ---------- 1. 读取并打印 key ----------
+SERVERCHAN_KEY = os.getenv("SERVERCHAN_KEY")
+logger.info("【排查-1】读取 SERVERCHAN_KEY=%s", "已设置" if SERVERCHAN_KEY else "空")
+
 def wx_push(title, content):
-    key = os.getenv("SERVERCHAN_KEY")
-    if not key:
+    if not SERVERCHAN_KEY:
+        logger.warning("【排查-2】key 为空，跳过推送")
         return
-    url = f"https://sctapi.ftqq.com/{key}.send"
+    url = f"https://sctapi.ftqq.com/{SERVERCHAN_KEY}.send"
+    logger.info("【排查-3】推送 URL=%s", url)
+    data = {"title": title, "desp": content}
     try:
-        rsp = requests.post(url, data={"title": title, "desp": content}, timeout=5)
-        logger.info("Server 酱推送结果：%s", rsp.text)
+        rsp = requests.post(url, data=data, timeout=5)
+        logger.info("【排查-4】推送响应：%s", rsp.text)
     except Exception as e:
-        logger.error("Server 酱推送异常：%s", e)
+        logger.error("【排查-5】推送异常：%s", e)
 
-# ---------------- 结果收集 -----------------
-results = []
-
-# ---------------- 步数提交类 -----------------
 class StepSubmitter:
     def __init__(self):
         self.s = requests.Session()
@@ -85,11 +85,13 @@ class StepSubmitter:
             if idx < len(ACCOUNTS):
                 time.sleep(5)
 
-        # 推送明细
-        lines = [f"步数提交日报", f"成功 {ok} 账号，失败 {fail} 账号。"]
+        # ---------- 6. 组装并推送 ----------
+        lines = ["步数提交日报", f"成功 {ok} 账号，失败 {fail} 账号。"]
         for r in results:
             lines.append(f"{r['user']}: {r['steps']} 步")
-        wx_push("步数提交日报", "\n".join(lines))
+        content = "\n".join(lines)
+        logger.info("【排查-6】推送正文：\n%s", content)
+        wx_push("步数提交日报", content)
 
         logger.info('全部完成 → 成功 %d / 失败 %d', ok, fail)
         return ok, fail
@@ -97,8 +99,14 @@ class StepSubmitter:
 # ---------------- 入口 -----------------
 if __name__ == '__main__':
     if not ACCOUNTS:
-        logger.error('未设置 ACCOUNTS 环境变量')
+        logger.error('【排查-0】未设置 ACCOUNTS 环境变量')
         exit(1)
     submitter = StepSubmitter()
     ok, fail = submitter.run()
     exit(0 if fail == 0 else 1)
+
+# ======== 仅用于调试推送 ========
+if __name__ == '__main__':
+    os.environ['SERVERCHAN_KEY'] = os.getenv('SERVERCHAN_KEY', '')  # 确保可读
+    wx_push("调试推送", "这是一条调试消息\n如果收到说明推送正常")
+# =================================
