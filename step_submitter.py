@@ -14,21 +14,19 @@ logger = logging.getLogger(__name__)
 
 # 多账号配置
 ACCOUNTS = [
-    {"username": "账号1", "password": "密码1"},
-    {"username": "账号2", "password": "密码2"},
+    {"username": "yundong11@126.com", "password": "lvsi0017"},
+    {"username": "yundong5@163.com", "password": "lvsi0017"},
+    {"username": "yundong6@163.com", "password": "lvsi0017"},
 ]
 
 # 步数范围配置
 STEP_RANGES = {
-    8: {"min": 6000, "max": 10000},
-    12: {"min": 8000, "max": 14000},
-    16: {"min": 10000, "max": 18000},
-    20: {"min": 12000, "max": 22000},
-    22: {"min": 15000, "max": 24000}
+    5: {"min": 60000, "max": 70000},
+    6: {"min": 60000, "max": 70000},
 }
 
 # 默认步数（当不在指定时间段时使用）
-DEFAULT_STEPS = 24465
+DEFAULT_STEPS = 65535
 
 class StepSubmitter:
     def __init__(self):
