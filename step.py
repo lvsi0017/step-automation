@@ -8,27 +8,34 @@ import logging
 import requests
 from datetime import datetime
 
+# ---------------- 日志 -----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-ACCOUNTS   = json.loads(os.getenv("ACCOUNTS", "[]"))
-STEP_RANGES = {5: {"min": 60000, "max": 70000}, 6: {"min": 60000, "max": 70000}}
+# ---------------- 账号 -----------------
+ACCOUNTS = json.loads(os.getenv("ACCOUNTS", "[]"))
+
+# ---------------- 步数规则 -----------------
+STEP_RANGES = {5: {"min": 60000, "max": 70000},
+               6: {"min": 60000, "max": 70000}}
 DEFAULT_STEPS = 65535
+
+# ---------------- 推送 -----------------
+def wx_push(title, content):
+    key = os.getenv("SERVERCHAN_KEY")
+    if not key:
+        return
+    url = f"https://sctapi.ftqq.com/{key}.send"
+    try:
+        rsp = requests.post(url, data={"title": title, "desp": content}, timeout=5)
+        logger.info("Server 酱推送结果：%s", rsp.text)
+    except Exception as e:
+        logger.error("Server 酱推送异常：%s", e)
+
+# ---------------- 结果收集 -----------------
 results = []
 
-def wx_push(title, content):
-    token = os.getenv("PUSHPLUS_TOKEN")
-    if not token:
-        logger.warning("未设置 PUSHPLUS_TOKEN，跳过推送")
-        return
-    url = "https://www.pushplus.plus/send"
-    data = {"token": token, "title": title, "content": content, "template": "txt"}
-    try:
-        rsp = requests.post(url, json=data, timeout=5)
-        logger.info("PushPlus 推送结果：%s", rsp.text)
-    except Exception as e:
-        logger.error("PushPlus 推送异常：%s", e)
-
+# ---------------- 步数提交类 -----------------
 class StepSubmitter:
     def __init__(self):
         self.s = requests.Session()
@@ -78,14 +85,16 @@ class StepSubmitter:
             if idx < len(ACCOUNTS):
                 time.sleep(5)
 
-        lines = ["步数提交日报", f"成功 {ok} 账号，失败 {fail} 账号。"]
+        # 推送明细
+        lines = [f"成功 {ok} 账号，失败 {fail} 账号。"]
         for r in results:
             lines.append(f"{r['user']}: {r['steps']} 步")
-        wx_push("步数提交日报", "<br>".join(lines))
+        wx_push("步数提交日报", "\n".join(lines))
 
         logger.info('全部完成 → 成功 %d / 失败 %d', ok, fail)
         return ok, fail
 
+# ---------------- 入口 -----------------
 if __name__ == '__main__':
     if not ACCOUNTS:
         logger.error('未设置 ACCOUNTS 环境变量')
