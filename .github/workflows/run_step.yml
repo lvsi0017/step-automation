@@ -16,4 +16,5 @@ jobs:
       - run: pip install -r requirements.txt
       - env:
           ACCOUNTS: ${{ secrets.ACCOUNTS }}
+          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
         run: python step.py
