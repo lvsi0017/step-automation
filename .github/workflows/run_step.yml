@@ -2,7 +2,7 @@ name: Run Step Submitter
 
 on:
   schedule:
-    - cron: '*/5 * * * *'   # 每5分钟运行一次（UTC 时间）
+    - cron: '30 21 * * *'   # UTC 21:30 → 北京时间次日 5:30
   workflow_dispatch:       # 保留手动触发
 
 jobs:
