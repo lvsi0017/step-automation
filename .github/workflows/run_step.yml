@@ -2,19 +2,19 @@ name: Run Step Submitter
 
 on:
   schedule:
-    - cron: '*/5 * * * *'   # 每 5 分钟
-  workflow_dispatch:
+    - cron: '*/5 * * * *'   # 每5分钟运行一次（UTC 时间）
+  workflow_dispatch:       # 保留手动触发
 
 jobs:
   submit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4         # 检出代码
+      - uses: actions/setup-python@v4     # 设置 Python 环境
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt  # 安装依赖
       - env:
-          ACCOUNTS: ${{ secrets.ACCOUNTS }}
-          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
-        run: python step.py
+          ACCOUNTS: ${{ secrets.ACCOUNTS }}          # 读取账户 Secrets
+          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }} # 读取 Server酱 Secrets
+        run: python step.py                  # 运行脚本
