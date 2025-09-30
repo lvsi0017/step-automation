@@ -19,3 +19,5 @@ jobs:
           SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}   # Server 酱 SendKey
         run: python step.py
 
+
+trigger: re-register schedule
