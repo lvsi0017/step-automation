@@ -2,7 +2,7 @@ name: Run Step Submitter
 
 on:
   schedule:
-    - cron: '30 21 * * *'   # 北京次日 05:30
+    - cron: '5 9 * * *'   # 北京次日 05:30
   workflow_dispatch:
 
 jobs:
