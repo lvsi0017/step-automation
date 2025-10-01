@@ -2,19 +2,42 @@ name: Run Step Submitter
 
 on:
   schedule:
-    - cron: '30 21 * * *'   # UTC 21:30 → 北京时间次日 5:30
-  workflow_dispatch:       # 保留手动触发
+    - cron: '30 21 * * *'   # UTC 21:30 = 北京时间次日 05:30
+  workflow_dispatch:
 
 jobs:
   submit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4         # 检出代码
-      - uses: actions/setup-python@v4     # 设置 Python 环境
+      # 建议优化点1：使用更标准的Action设置时区
+      - name: 设置时区为北京时间
+        uses: szenius/set-timezone@v1.2
+        with:
+          timezoneLinux: "Asia/Shanghai"
+
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt  # 安装依赖
-      - env:
-          ACCOUNTS: ${{ secrets.ACCOUNTS }}          # 读取账户 Secrets
-          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }} # 读取 Server酱 Secrets
-        run: python step.py                  # 运行脚本
+          # 建议优化点2：为setup-python配置缓存
+          cache: 'pip' # 根据您依赖管理工具的不同，也可设置为 'poetry' 或 'pipenv'
+
+      - name: 缓存Python依赖
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip # 缓存路径可根据实际情况调整
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 运行步数提交脚本
+        env:
+          ACCOUNTS: ${{ secrets.ACCOUNTS }}
+          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
+        run: python step.py
